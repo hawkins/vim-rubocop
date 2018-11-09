@@ -12,6 +12,9 @@ if exists('g:loaded_vimrubocop') || &cp
 endif
 let g:loaded_vimrubocop = 1
 
+sign define RuboCop_Error text=!
+sign define RuboCop_Corrected text=*
+
 let s:save_cpo = &cpo
 set cpo&vim
 
@@ -56,6 +59,7 @@ function! s:RuboCop(current_args)
   let l:filename       = @%
   let l:rubocop_cmd    = g:vimrubocop_rubocop_cmd
   let l:rubocop_opts   = ' '.a:current_args.' '.l:extra_args.' --format emacs'
+
   if g:vimrubocop_config != ''
     let l:rubocop_opts = ' '.l:rubocop_opts.' --config '.g:vimrubocop_config
   endif
@@ -68,6 +72,25 @@ function! s:RuboCop(current_args)
   let l:rubocop_output  = substitute(l:rubocop_output, '\\"', "'", 'g')
   let l:rubocop_results = split(l:rubocop_output, "\n")
   cexpr l:rubocop_results
+
+  for result in l:rubocop_results
+    let l:offender = matchstr(result, '.\{-\}:\@=')
+    execute 'sign unplace * name=' . l:offender
+  endfor
+
+  let i = 8000
+
+  for result in l:rubocop_results
+    let i = i + 1
+    let l:offender = matchstr(result, '.\{-\}:\@=')
+    let l:line = matchstr(result, ':\@<=.\{-\}:\@=')
+    if result =~ '\[Corrected\]'
+      execute 'sign place ' . i . ' line=' . l:line . ' name=RuboCop_Corrected file=' . l:filename
+    else
+      execute 'sign place ' . i . ' line=' . l:line . ' name=RuboCop_Error file=' . l:filename
+    endif
+  endfor
+
   call s:RuboCopShow()
 endfunction
 
